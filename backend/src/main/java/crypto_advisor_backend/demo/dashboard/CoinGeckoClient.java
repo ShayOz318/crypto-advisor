@@ -4,10 +4,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +29,15 @@ public class CoinGeckoClient {
         COIN_MAP.put("ETH", "ethereum");
         COIN_MAP.put("SOL", "solana");
         COIN_MAP.put("DOGE", "dogecoin");
+        COIN_MAP.put("ADA", "cardano");
+        COIN_MAP.put("XRP", "ripple");
+        COIN_MAP.put("BNB", "binancecoin");
+        COIN_MAP.put("AVAX", "avalanche-2");
+        COIN_MAP.put("MATIC", "polygon-pos");
+        COIN_MAP.put("LINK", "chainlink");
+        COIN_MAP.put("DOT", "polkadot");
+        COIN_MAP.put("LTC", "litecoin");
+        COIN_MAP.put("SHIB", "shiba-inu");
     }
 
     public Map<String, Double> getPrices(List<String> assets) {
@@ -147,6 +158,75 @@ public class CoinGeckoClient {
                             entry.getValue()
                     ))
                     .toList();
+        } catch (Exception exception) {
+            return List.of();
+        }
+    }
+
+    public List<CoinChartPoint> getLast7WeeklyPrices(String symbol) {
+        try {
+            String coinId = COIN_MAP.getOrDefault(symbol, symbol.toLowerCase());
+            String url = "https://api.coingecko.com/api/v3/coins/" + coinId
+                    + "/market_chart?vs_currency=usd&days=70";
+
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            if (response == null || !response.containsKey("prices")) {
+                return List.of();
+            }
+
+            List<List<Object>> prices = (List<List<Object>>) response.get("prices");
+            Map<LocalDate, Double> dailyMap = prices.stream()
+                    .filter(rawPoint -> rawPoint.size() >= 2)
+                    .collect(Collectors.toMap(
+                            rawPoint -> Instant.ofEpochMilli(((Number) rawPoint.get(0)).longValue())
+                                    .atZone(ZoneId.systemDefault())
+                                    .toLocalDate(),
+                            rawPoint -> ((Number) rawPoint.get(1)).doubleValue(),
+                            (first, second) -> second,
+                            LinkedHashMap::new
+                    ));
+
+            if (dailyMap.isEmpty()) {
+                return List.of();
+            }
+
+            LocalDate currentSunday = LocalDate.now(ZoneId.systemDefault())
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
+
+            List<CoinChartPoint> weeklyPoints = new java.util.ArrayList<>();
+            for (int i = 6; i >= 0; i--) {
+                LocalDate targetSunday = currentSunday.minusWeeks(i);
+                Double weeklyPrice = dailyMap.get(targetSunday);
+
+                if (weeklyPrice == null) {
+                    for (int offset = 1; offset <= 6; offset++) {
+                        LocalDate candidate = targetSunday.plusDays(offset);
+                        if (dailyMap.containsKey(candidate)) {
+                            weeklyPrice = dailyMap.get(candidate);
+                            break;
+                        }
+                    }
+                }
+
+                if (weeklyPrice == null) {
+                    for (int offset = 1; offset <= 6; offset++) {
+                        LocalDate candidate = targetSunday.minusDays(offset);
+                        if (dailyMap.containsKey(candidate)) {
+                            weeklyPrice = dailyMap.get(candidate);
+                            break;
+                        }
+                    }
+                }
+
+                if (weeklyPrice != null) {
+                    weeklyPoints.add(new CoinChartPoint(
+                            targetSunday.format(DateTimeFormatter.ofPattern("MM-dd")),
+                            weeklyPrice
+                    ));
+                }
+            }
+
+            return weeklyPoints;
         } catch (Exception exception) {
             return List.of();
         }

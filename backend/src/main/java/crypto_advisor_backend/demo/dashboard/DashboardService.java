@@ -88,11 +88,23 @@ public class DashboardService {
         }
 
         String meme = null;
+        String memeImageUrl = null;
+        String memePostUrl = null;
         if (enabled.contains("Fun") || enabled.contains("Fun Crypto Meme")) {
-            meme = memeClient.getRandomMeme();
+            MemeItem memeItem = memeClient.getRandomMeme();
+            meme = memeItem.getCaption();
+            memeImageUrl = memeItem.getImageUrl();
+            memePostUrl = memeItem.getPostUrl();
         }
 
-        String chartUpdateCadence = "Day Trader".equals(normalizedInvestorType) ? "hourly" : "daily";
+        String chartUpdateCadence;
+        if ("Day Trader".equals(normalizedInvestorType)) {
+            chartUpdateCadence = "hourly";
+        } else if ("HODLer".equals(normalizedInvestorType)) {
+            chartUpdateCadence = "weekly";
+        } else {
+            chartUpdateCadence = "daily";
+        }
 
         return new DashboardResponse(
                 contentTypes,
@@ -101,7 +113,10 @@ public class DashboardService {
                 news,
                 aiInsight,
                 meme,
-                chartUpdateCadence
+                memeImageUrl,
+                memePostUrl,
+                chartUpdateCadence,
+                normalizedInvestorType
         );
     }
 
@@ -113,8 +128,12 @@ public class DashboardService {
                 .map(UserPreferences::getInvestorType)
                 .orElse("HODLer");
 
-        if (normalizeInvestorType(investorType).equals("Day Trader")) {
+        String normalizedType = normalizeInvestorType(investorType);
+        if ("Day Trader".equals(normalizedType)) {
             return coinGeckoClient.getHourlyPrices(symbol);
+        }
+        if ("HODLer".equals(normalizedType)) {
+            return coinGeckoClient.getLast7WeeklyPrices(symbol);
         }
         return coinGeckoClient.getWeeklyPrices(symbol);
     }
@@ -135,19 +154,12 @@ public class DashboardService {
     }
 
     private List<String> normalizeAssetsByInvestorType(List<String> assets, String investorType) {
-        List<String> normalizedAssets = assets == null ? List.of() : assets;
-        if ("NFT Collector".equals(investorType)) {
-            return normalizedAssets.contains("ETH") ? List.of("ETH") : List.of("ETH");
-        }
-        return normalizedAssets;
+        return assets == null ? List.of() : assets;
     }
 
     private List<String> tailorCoinPricesByInvestorType(List<String> coinPrices, String investorType) {
         if ("HODLer".equals(investorType)) {
-            List<String> longTermView = new ArrayList<>();
-            for (int i = 0; i < Math.min(2, coinPrices.size()); i++) {
-                longTermView.add(coinPrices.get(i));
-            }
+            List<String> longTermView = new ArrayList<>(coinPrices);
             longTermView.add("HODLer focus: prioritize long-term trend direction over daily swings.");
             return longTermView;
         }
@@ -164,33 +176,14 @@ public class DashboardService {
     }
 
     private List<NewsItem> tailorNewsByInvestorType(List<NewsItem> news, String investorType) {
-        if ("NFT Collector".equals(investorType)) {
-            List<NewsItem> sorted = new ArrayList<>(news);
-            sorted.sort(Comparator.comparing(item -> !isNftRelated(item.getTitle())));
-
-            List<NewsItem> tailored = new ArrayList<>();
-            for (NewsItem item : sorted) {
-                String paragraphOne = addPrefix(
-                        item.getParagraphOne(),
-                        "NFT-focused read:"
-                );
-                String paragraphTwo = addSuffix(
-                        item.getParagraphTwo(),
-                        "Use this update to assess whether demand looks sustainable across marketplaces and whether Ethereum/L2 conditions support continued collector activity."
-                );
-                tailored.add(new NewsItem(
-                        item.getTitle(),
-                        item.getUrl(),
-                        item.getImageUrl(),
-                        paragraphOne,
-                        paragraphTwo
-                ));
-            }
-            return tailored;
-        }
+        List<NewsItem> prioritized = new ArrayList<>(news);
+        prioritized.sort((first, second) -> Integer.compare(
+                scoreNewsForInvestorType(second.getTitle(), investorType),
+                scoreNewsForInvestorType(first.getTitle(), investorType)
+        ));
 
         List<NewsItem> tailored = new ArrayList<>();
-        for (NewsItem item : news) {
+        for (NewsItem item : prioritized) {
             if ("Day Trader".equals(investorType)) {
                 String paragraphOne = addPrefix(
                         item.getParagraphOne(),
@@ -199,6 +192,22 @@ public class DashboardService {
                 String paragraphTwo = addSuffix(
                         item.getParagraphTwo(),
                         "For day-trading setups, prioritize volatility structure and momentum follow-through."
+                );
+                tailored.add(new NewsItem(
+                        item.getTitle(),
+                        item.getUrl(),
+                        item.getImageUrl(),
+                        paragraphOne,
+                        paragraphTwo
+                ));
+            } else if ("NFT Collector".equals(investorType)) {
+                String paragraphOne = addPrefix(
+                        item.getParagraphOne(),
+                        "NFT-focused read:"
+                );
+                String paragraphTwo = addSuffix(
+                        item.getParagraphTwo(),
+                        "Use this update to assess whether demand looks sustainable across marketplaces and whether Ethereum/L2 conditions support continued collector activity."
                 );
                 tailored.add(new NewsItem(
                         item.getTitle(),
@@ -226,6 +235,44 @@ public class DashboardService {
             }
         }
         return tailored;
+    }
+
+    private int scoreNewsForInvestorType(String title, String investorType) {
+        if (title == null) {
+            return 0;
+        }
+
+        String normalized = title.toLowerCase(Locale.ROOT);
+        int score = 0;
+
+        if ("Day Trader".equals(investorType)) {
+            if (containsAny(normalized, "price", "rally", "drop", "volatility", "liquidation", "volume")) score += 4;
+            if (containsAny(normalized, "breaking", "surge", "plunge", "intraday", "short-term")) score += 3;
+            if (containsAny(normalized, "macro", "fomc", "fed", "cpi")) score += 1;
+            return score;
+        }
+
+        if ("NFT Collector".equals(investorType)) {
+            if (containsAny(normalized, "nft", "collection", "opensea", "mint", "digital art")) score += 5;
+            if (containsAny(normalized, "ethereum", "eth", "layer 2", "l2")) score += 3;
+            if (containsAny(normalized, "creator", "marketplace", "royalty")) score += 2;
+            return score;
+        }
+
+        // HODLer default scoring: adoption + long-term structure over noise.
+        if (containsAny(normalized, "adoption", "institution", "etf", "regulation", "policy", "ecosystem")) score += 4;
+        if (containsAny(normalized, "network", "upgrade", "roadmap", "developer")) score += 3;
+        if (containsAny(normalized, "volatility", "intraday", "liquidation")) score -= 1;
+        return score;
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String addPrefix(String original, String prefix) {

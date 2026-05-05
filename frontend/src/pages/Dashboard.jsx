@@ -93,6 +93,16 @@ function getVoteKey(sectionType, itemId) {
     return `${sectionType}:${itemId}`;
 }
 
+function getMotivationalLine(investorType) {
+    if (investorType === "Day Trader") {
+        return "Stay sharp, move fast, and turn every moment into an opportunity ⚡";
+    }
+    if (investorType === "NFT Collector") {
+        return "Discover rare value, follow your vision, and own the future of digital art 🎨";
+    }
+    return "Stay patient, trust the process, and let time grow your investment 🚀";
+}
+
 function getDashboardCacheKey() {
     const token = localStorage.getItem("token") ?? "guest";
     return `dashboardData:${token.slice(-16)}`;
@@ -119,29 +129,6 @@ function extractCurrentPrice(coinPrices, symbol) {
 
     const numeric = Number(target.replace(`${symbol}: $`, "").replaceAll(",", ""));
     return Number.isFinite(numeric) ? numeric : null;
-}
-
-function buildFallbackChartData(currentPrice, isHourlyCadence) {
-    if (!Number.isFinite(currentPrice)) {
-        return [];
-    }
-
-    const now = new Date();
-    if (isHourlyCadence) {
-        return Array.from({ length: 12 }).map((_, index) => {
-            const d = new Date(now);
-            d.setHours(now.getHours() - (11 - index), 0, 0, 0);
-            const label = `${String(d.getHours()).padStart(2, "0")}:00`;
-            return { date: label, price: currentPrice };
-        });
-    }
-
-    return Array.from({ length: 7 }).map((_, index) => {
-        const d = new Date(now);
-        d.setDate(now.getDate() - (6 - index));
-        const label = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return { date: label, price: currentPrice };
-    });
 }
 
 function preferredCoins(assets) {
@@ -241,6 +228,7 @@ function CoinLineChart({ points }) {
     const range = maxPrice - minPrice || 1;
 
     const xStep = (width - padding * 2) / (points.length - 1);
+    const horizontalPaddingPercent = (padding / width) * 100;
     const path = points
         .map((point, index) => {
             const x = padding + xStep * index;
@@ -262,6 +250,21 @@ function CoinLineChart({ points }) {
     };
 
     const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
+    const previousHoveredPoint =
+        hoveredIndex === null || hoveredIndex === 0 ? null : points[hoveredIndex - 1];
+    const priceDelta =
+        hoveredPoint && previousHoveredPoint
+            ? hoveredPoint.price - previousHoveredPoint.price
+            : null;
+    const deltaPrefix = priceDelta === null ? "" : priceDelta > 0 ? "+" : priceDelta < 0 ? "-" : "";
+    const deltaClassName =
+        priceDelta === null
+            ? "coin-chart-tooltip-delta neutral"
+            : priceDelta > 0
+              ? "coin-chart-tooltip-delta up"
+              : priceDelta < 0
+                ? "coin-chart-tooltip-delta down"
+                : "coin-chart-tooltip-delta neutral";
 
     return (
         <div className="coin-chart">
@@ -306,13 +309,26 @@ function CoinLineChart({ points }) {
                     >
                         <div className="coin-chart-tooltip-date">{hoveredPoint.date}</div>
                         <div className="coin-chart-tooltip-price">{formatUsd(hoveredPoint.price)}</div>
+                        <div className={deltaClassName}>
+                            {priceDelta === null
+                                ? "No prior point"
+                                : `${deltaPrefix}${formatUsd(Math.abs(priceDelta))}`}
+                        </div>
                     </div>
                 )}
             </div>
             <div className="chart-labels">
-                {points.map((point, index) => (
-                    <span key={`${point.date}-label-${index}`}>{point.date}</span>
-                ))}
+                <div
+                    className="chart-labels-inner"
+                    style={{
+                        paddingLeft: `${horizontalPaddingPercent}%`,
+                        paddingRight: `${horizontalPaddingPercent}%`,
+                    }}
+                >
+                    {points.map((point, index) => (
+                        <span key={`${point.date}-label-${index}`}>{point.date}</span>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -321,14 +337,13 @@ function CoinLineChart({ points }) {
 function Dashboard() {
     const [dashboardData, setDashboardData] = useState(null);
     const [selectedCoin, setSelectedCoin] = useState("BTC");
-    const [expandedCoin, setExpandedCoin] = useState(null);
     const [coinChartData, setCoinChartData] = useState([]);
+    const [chartDataByCoin, setChartDataByCoin] = useState({});
     const [isChartLoading, setIsChartLoading] = useState(false);
     const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
     const [now, setNow] = useState(new Date());
-    const [selectedMemeImage, setSelectedMemeImage] = useState("");
     const [selectedVotes, setSelectedVotes] = useState({});
-    const isHourlyCadence = dashboardData?.chartUpdateCadence === "hourly";
+    const chartUpdateCadence = dashboardData?.chartUpdateCadence ?? "daily";
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -336,15 +351,6 @@ function Dashboard() {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, []);
-
-    useEffect(() => {
-        const memePool = ["/memes/meme1.png", "/memes/meme2.png", "/memes/meme3.png"];
-        const rawIndex = localStorage.getItem("memeRotationIndex");
-        const currentIndex = Number.isFinite(Number(rawIndex)) ? Number(rawIndex) : 0;
-        const safeIndex = ((currentIndex % memePool.length) + memePool.length) % memePool.length;
-        setSelectedMemeImage(memePool[safeIndex]);
-        localStorage.setItem("memeRotationIndex", String((safeIndex + 1) % memePool.length));
     }, []);
 
     useEffect(() => {
@@ -368,7 +374,7 @@ function Dashboard() {
 
     useEffect(() => {
         async function loadCoinChart() {
-            if (!selectedCoin || !expandedCoin) {
+            if (!selectedCoin) {
                 return;
             }
 
@@ -377,21 +383,27 @@ function Dashboard() {
                 const chartData = await getCoinWeeklyChart(selectedCoin);
                 if (chartData.length >= 2) {
                     setCoinChartData(chartData);
+                    setChartDataByCoin((prev) => ({ ...prev, [selectedCoin]: chartData }));
                     return;
                 }
-
-                const fallbackPrice = extractCurrentPrice(dashboardData?.coinPrices, selectedCoin);
-                setCoinChartData(buildFallbackChartData(fallbackPrice, isHourlyCadence));
+                if (chartDataByCoin[selectedCoin]?.length >= 2) {
+                    setCoinChartData(chartDataByCoin[selectedCoin]);
+                    return;
+                }
+                setCoinChartData([]);
             } catch (error) {
-                const fallbackPrice = extractCurrentPrice(dashboardData?.coinPrices, selectedCoin);
-                setCoinChartData(buildFallbackChartData(fallbackPrice, isHourlyCadence));
+                if (chartDataByCoin[selectedCoin]?.length >= 2) {
+                    setCoinChartData(chartDataByCoin[selectedCoin]);
+                    return;
+                }
+                setCoinChartData([]);
             } finally {
                 setIsChartLoading(false);
             }
         }
 
         loadCoinChart();
-    }, [selectedCoin, expandedCoin, dashboardData, isHourlyCadence]);
+    }, [selectedCoin, dashboardData, chartUpdateCadence]);
 
     useEffect(() => {
         if (!dashboardData) {
@@ -433,7 +445,7 @@ function Dashboard() {
 
         const intervalId = setInterval(() => {
             setCurrentNewsIndex((prev) => (prev + 1) % newsCount);
-        }, 6000);
+        }, 45000);
 
         return () => clearInterval(intervalId);
     }, [dashboardData?.marketNews]);
@@ -451,6 +463,11 @@ function Dashboard() {
         }
     };
 
+    const getSelectedVote = (sectionType, itemId) => {
+        const key = getVoteKey(sectionType, itemId);
+        return selectedVotes[key];
+    };
+
     if (!dashboardData) {
         return <div className="page">Loading...</div>;
     }
@@ -461,7 +478,8 @@ function Dashboard() {
     const showCoinPrices = showAll || enabled.has("Charts") || enabled.has("Coin Prices");
     const showNews = showAll || enabled.has("Market News");
     const showAi = showAll || enabled.has("AI Insight");
-    const showMeme = showAll || enabled.has("Fun") || enabled.has("Fun Crypto Meme");
+    const memeEnabled = showAll || enabled.has("Fun") || enabled.has("Fun Crypto Meme");
+    const showMeme = memeEnabled && Boolean(dashboardData?.memeImageUrl);
 
     const chartCoins = preferredCoins(dashboardData.assets);
     const coinCards = chartCoins.map((symbol) => ({
@@ -476,11 +494,16 @@ function Dashboard() {
     });
     const userName = readUserName();
     const personalizedGreeting = userName ? `${greeting}, ${userName}` : greeting;
+    const investorType = dashboardData.investorType ?? "HODLer";
+    const motivationalLine = getMotivationalLine(investorType);
     const marketNews = buildNewsFeed(dashboardData.marketNews);
     const currentNews = marketNews[currentNewsIndex] ?? null;
-    const coinChartTitle = isHourlyCadence
-        ? "Coin Prices (updates every hour)"
-        : "Coin Prices (updates once per day)";
+    const coinChartTitle =
+        chartUpdateCadence === "hourly"
+            ? "Coin Prices (updates every hour)"
+            : chartUpdateCadence === "weekly"
+              ? "Coin Prices (updates weekly on Sunday 00:00)"
+              : "Coin Prices (updates once per day)";
 
     const handlePrevNews = () => {
         if (marketNews.length === 0) {
@@ -504,15 +527,19 @@ function Dashboard() {
                     <p className="hero-greeting">{personalizedGreeting}</p>
                     <p className="hero-clock">{clock}</p>
                     <h1>Daily Crypto Dashboard</h1>
-                    <p>
-                        Personalized insights, market updates, and fun crypto content based on your
-                        onboarding preferences.
-                    </p>
+                    <p className="hero-motivation">{motivationalLine}</p>
                 </div>
-                <img
-                    src="https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&w=1200&q=80"
-                    alt="Crypto market visualization"
-                />
+                <video
+                    className="dashboard-hero-video"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-label="Crypto market video background"
+                >
+                    <source src="/coins2.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                </video>
             </section>
 
             <div className="dashboard-grid">
@@ -522,29 +549,22 @@ function Dashboard() {
                         {coinCards.length > 0 ? (
                             <div className="coin-cards-grid">
                                 {coinCards.map((coin) => {
-                                    const isActive = expandedCoin === coin.symbol;
+                                    const isActive = selectedCoin === coin.symbol;
                                     return (
-                                        <article key={coin.symbol} className="coin-price-card">
-                                            <div className="coin-card-top">
-                                                <p className="coin-price-symbol">{coin.symbol}</p>
-                                                <button
-                                                    type="button"
-                                                    className={`coin-open-chart-button ${
-                                                        isActive ? "is-active" : ""
-                                                    }`}
-                                                    onClick={() => {
-                                                        if (isActive) {
-                                                            setExpandedCoin(null);
-                                                            return;
-                                                        }
-                                                        setSelectedCoin(coin.symbol);
-                                                        setExpandedCoin(coin.symbol);
-                                                    }}
-                                                    aria-label={`Open ${coin.symbol} chart`}
-                                                >
-                                                    ⤢
-                                                </button>
-                                            </div>
+                                        <article
+                                            key={coin.symbol}
+                                            className={`coin-price-card ${isActive ? "is-active" : ""}`}
+                                            onClick={() => setSelectedCoin(coin.symbol)}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault();
+                                                    setSelectedCoin(coin.symbol);
+                                                }
+                                            }}
+                                        >
+                                            <p className="coin-price-symbol">{coin.symbol}</p>
                                             <p className="coin-price-value">
                                                 {Number.isFinite(coin.price)
                                                     ? formatUsd(coin.price)
@@ -561,18 +581,58 @@ function Dashboard() {
                             </p>
                         )}
 
-                        {expandedCoin && (
-                            <>
-                                <p className="coin-selected-label">Chart: {expandedCoin}</p>
-                                {isChartLoading ? (
-                                    <p className="chart-empty">
-                                        {isHourlyCadence ? "Loading 12-hour chart..." : "Loading 7-day chart..."}
-                                    </p>
-                                ) : (
-                                    <CoinLineChart points={coinChartData} />
-                                )}
-                            </>
+                        <p className="coin-selected-label">Chart: {selectedCoin}</p>
+                        {isChartLoading ? (
+                            <p className="chart-empty">
+                                {chartUpdateCadence === "hourly"
+                                    ? "Loading 12-hour chart..."
+                                    : chartUpdateCadence === "weekly"
+                                      ? "Loading 7-week chart..."
+                                      : "Loading 7-day chart..."}
+                            </p>
+                        ) : (
+                            <CoinLineChart points={coinChartData} />
                         )}
+                        <div className="section-vote-buttons">
+                            {(() => {
+                                const itemId = `coin-chart:${selectedCoin}`;
+                                const selected = getSelectedVote("COIN_PRICES", itemId);
+                                return (
+                                    <>
+                                        <button
+                                            className={`vote-button ${selected === "LIKE" ? "is-selected" : ""}`}
+                                            onClick={() =>
+                                                handleVote(
+                                                    "COIN_PRICES",
+                                                    "LIKE",
+                                                    itemId,
+                                                    `Chart for ${selectedCoin}`
+                                                )
+                                            }
+                                            aria-pressed={selected === "LIKE"}
+                                        >
+                                            👍
+                                        </button>
+                                        <button
+                                            className={`vote-button ${
+                                                selected === "DISLIKE" ? "is-selected" : ""
+                                            }`}
+                                            onClick={() =>
+                                                handleVote(
+                                                    "COIN_PRICES",
+                                                    "DISLIKE",
+                                                    itemId,
+                                                    `Chart for ${selectedCoin}`
+                                                )
+                                            }
+                                            aria-pressed={selected === "DISLIKE"}
+                                        >
+                                            👎
+                                        </button>
+                                    </>
+                                );
+                            })()}
+                        </div>
                     </section>
                 )}
 
@@ -618,8 +678,8 @@ function Dashboard() {
                                 </div>
                                 <div className="news-vote-buttons">
                                     {(() => {
-                                        const likeKey = getVoteKey("MARKET_NEWS", `news:${currentNews.title}`);
-                                        const selected = selectedVotes[likeKey];
+                                        const itemId = `news:${currentNews.title}`;
+                                        const selected = getSelectedVote("MARKET_NEWS", itemId);
                                         return (
                                             <>
                                     <button
@@ -628,7 +688,7 @@ function Dashboard() {
                                             handleVote(
                                                 "MARKET_NEWS",
                                                 "LIKE",
-                                                `news:${currentNews.title}`,
+                                                itemId,
                                                 currentNews.title
                                             )
                                         }
@@ -642,7 +702,7 @@ function Dashboard() {
                                             handleVote(
                                                 "MARKET_NEWS",
                                                 "DISLIKE",
-                                                `news:${currentNews.title}`,
+                                                itemId,
                                                 currentNews.title
                                             )
                                         }
@@ -661,70 +721,39 @@ function Dashboard() {
                     </section>
                 )}
 
-                {showAi && (
-                    <section className="card">
-                        <h2>AI Insight</h2>
-                        <p>
-                            {dashboardData.aiInsight ?? "No insight available."}{" "}
-                            {(() => {
-                                const likeKey = getVoteKey("AI_INSIGHT", "ai:insight-of-day");
-                                const selected = selectedVotes[likeKey];
-                                return (
-                                    <>
-                            <button
-                                className={`vote-button ${selected === "LIKE" ? "is-selected" : ""}`}
-                                onClick={() =>
-                                    handleVote(
-                                        "AI_INSIGHT",
-                                        "LIKE",
-                                        "ai:insight-of-day",
-                                        dashboardData.aiInsight ?? ""
-                                    )
-                                }
-                                aria-pressed={selected === "LIKE"}
-                            >
-                                👍
-                            </button>
-                            <button
-                                className={`vote-button ${selected === "DISLIKE" ? "is-selected" : ""}`}
-                                onClick={() =>
-                                    handleVote(
-                                        "AI_INSIGHT",
-                                        "DISLIKE",
-                                        "ai:insight-of-day",
-                                        dashboardData.aiInsight ?? ""
-                                    )
-                                }
-                                aria-pressed={selected === "DISLIKE"}
-                            >
-                                👎
-                            </button>
-                                    </>
-                                );
-                            })()}
-                        </p>
-                    </section>
-                )}
-
                 {showMeme && (
                     <section className="card">
                         <h2>Fun Crypto Meme</h2>
-                        {selectedMemeImage ? (
-                            <img className="meme-image" src={selectedMemeImage} alt="Crypto meme" />
-                        ) : (
-                            <p>{dashboardData.meme ?? "No meme available."}</p>
-                        )}
-                        <p>
-                            Meme of the moment{" "}
+                        <p>{dashboardData.meme ?? "Crypto meme of the moment"}</p>
+                        {dashboardData.memeImageUrl ? (
+                            <img className="meme-image" src={dashboardData.memeImageUrl} alt="Crypto meme" />
+                        ) : null}
+                        {dashboardData.memePostUrl ? (
+                            <a
+                                className="news-carousel-link"
+                                href={dashboardData.memePostUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                View original post
+                            </a>
+                        ) : null}
+                        <div className="section-vote-buttons">
                             {(() => {
-                                const likeKey = getVoteKey("MEME", `meme:${selectedMemeImage}`);
-                                const selected = selectedVotes[likeKey];
+                                const itemId =
+                                    dashboardData.memeImageUrl ?? dashboardData.meme ?? "meme:unavailable";
+                                const selected = getSelectedVote("MEME", itemId);
                                 return (
                                     <>
                             <button
                                 className={`vote-button ${selected === "LIKE" ? "is-selected" : ""}`}
                                 onClick={() =>
-                                    handleVote("MEME", "LIKE", `meme:${selectedMemeImage}`, selectedMemeImage)
+                                    handleVote(
+                                        "MEME",
+                                        "LIKE",
+                                        itemId,
+                                        dashboardData.meme ?? "Crypto meme"
+                                    )
                                 }
                                 aria-pressed={selected === "LIKE"}
                             >
@@ -736,8 +765,8 @@ function Dashboard() {
                                     handleVote(
                                         "MEME",
                                         "DISLIKE",
-                                        `meme:${selectedMemeImage}`,
-                                        selectedMemeImage
+                                        itemId,
+                                        dashboardData.meme ?? "Crypto meme"
                                     )
                                 }
                                 aria-pressed={selected === "DISLIKE"}
@@ -747,7 +776,52 @@ function Dashboard() {
                                     </>
                                 );
                             })()}
-                        </p>
+                        </div>
+                    </section>
+                )}
+
+                {showAi && (
+                    <section className="card">
+                        <h2>AI Insight</h2>
+                        <p>{dashboardData.aiInsight ?? "No insight available."}</p>
+                        <div className="section-vote-buttons">
+                            {(() => {
+                                const itemId = "ai:insight-of-day";
+                                const selected = getSelectedVote("AI_INSIGHT", itemId);
+                                return (
+                                    <>
+                            <button
+                                className={`vote-button ${selected === "LIKE" ? "is-selected" : ""}`}
+                                onClick={() =>
+                                    handleVote(
+                                        "AI_INSIGHT",
+                                        "LIKE",
+                                        itemId,
+                                        dashboardData.aiInsight ?? ""
+                                    )
+                                }
+                                aria-pressed={selected === "LIKE"}
+                            >
+                                👍
+                            </button>
+                            <button
+                                className={`vote-button ${selected === "DISLIKE" ? "is-selected" : ""}`}
+                                onClick={() =>
+                                    handleVote(
+                                        "AI_INSIGHT",
+                                        "DISLIKE",
+                                        itemId,
+                                        dashboardData.aiInsight ?? ""
+                                    )
+                                }
+                                aria-pressed={selected === "DISLIKE"}
+                            >
+                                👎
+                            </button>
+                                    </>
+                                );
+                            })()}
+                        </div>
                     </section>
                 )}
             </div>

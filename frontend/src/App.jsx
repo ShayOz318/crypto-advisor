@@ -3,6 +3,7 @@ import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import Onboarding from "./pages/Onboarding.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Settings from "./pages/Settings.jsx";
 
 function RequireAuth({ children }) {
     const location = useLocation();
@@ -35,21 +36,31 @@ function NavBar() {
                 </div>
             ) : (
                 <>
+                    <div className="navbar-spacer" />
                     <div className="navbar-links">
                         <Link to="/dashboard">Dashboard</Link>
-                        <Link to="/onboarding">Preferences</Link>
                     </div>
-                    <button
-                        className="navbar-logout"
-                        type="button"
-                        onClick={() => {
-                            localStorage.removeItem("token");
-                            localStorage.removeItem("userName");
-                            window.location.href = "/";
-                        }}
-                    >
-                        Logout
-                    </button>
+                    <div className="navbar-right">
+                        <Link
+                            className="navbar-settings"
+                            to="/settings"
+                            aria-label="Settings"
+                            title="Settings"
+                        >
+                            ⚙
+                        </Link>
+                        <button
+                            className="navbar-logout"
+                            type="button"
+                            onClick={() => {
+                                localStorage.removeItem("token");
+                                localStorage.removeItem("userName");
+                                window.location.href = "/";
+                            }}
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </>
             )}
         </nav>
@@ -91,6 +102,14 @@ function App() {
                     element={
                         <RequireAuth>
                             <Dashboard />
+                        </RequireAuth>
+                    }
+                />
+                <Route
+                    path="/settings"
+                    element={
+                        <RequireAuth>
+                            <Settings />
                         </RequireAuth>
                     }
                 />

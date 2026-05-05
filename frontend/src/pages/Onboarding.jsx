@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getOnboardingPreferences, saveOnboarding } from "../api/api.js";
 
+const COIN_OPTIONS = ["BTC", "ETH", "SOL", "DOGE", "ADA", "XRP", "BNB", "AVAX", "MATIC", "LINK", "DOT", "LTC", "SHIB"];
+
 function getPreferencesCacheKey() {
     const token = localStorage.getItem("token") ?? "guest";
     return `onboardingPreferences:${token.slice(-16)}`;
@@ -100,22 +102,24 @@ function Onboarding() {
     }
 
     return (
-        <div className="page">
+        <div className="page preferences-page">
             <h1>Personalize Your Dashboard</h1>
 
-            <form onSubmit={handleSubmit}>
+            <form className="preferences-form" onSubmit={handleSubmit}>
                 <h2>Crypto Assets</h2>
 
-                {["BTC", "ETH", "SOL", "DOGE"].map((asset) => (
-                    <label key={asset}>
-                        <input
-                            type="checkbox"
-                            checked={assets.includes(asset)}
-                            onChange={() => toggleValue(asset, assets, setAssets)}
-                        />
-                        {asset}
-                    </label>
-                ))}
+                <div className="options-grid">
+                    {COIN_OPTIONS.map((asset) => (
+                        <label key={asset} className="option-chip">
+                            <input
+                                type="checkbox"
+                                checked={assets.includes(asset)}
+                                onChange={() => toggleValue(asset, assets, setAssets)}
+                            />
+                            {asset}
+                        </label>
+                    ))}
+                </div>
 
                 <h2>Investor Type</h2>
 
@@ -131,16 +135,18 @@ function Onboarding() {
 
                 <h2>Content Types</h2>
 
-                {["Market News", "Charts", "AI Insight", "Fun"].map((type) => (
-                    <label key={type}>
-                        <input
-                            type="checkbox"
-                            checked={contentTypes.includes(type)}
-                            onChange={() => toggleValue(type, contentTypes, setContentTypes)}
-                        />
-                        {type}
-                    </label>
-                ))}
+                <div className="options-grid">
+                    {["Market News", "Charts", "AI Insight", "Fun"].map((type) => (
+                        <label key={type} className="option-chip">
+                            <input
+                                type="checkbox"
+                                checked={contentTypes.includes(type)}
+                                onChange={() => toggleValue(type, contentTypes, setContentTypes)}
+                            />
+                            {type}
+                        </label>
+                    ))}
+                </div>
 
                 <button type="submit">Save Preferences</button>
             </form>

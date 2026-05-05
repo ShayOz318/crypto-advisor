@@ -4,23 +4,16 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e4a15473-4a9b-4708-9aaa-53cf9fe42787" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/Crypto-Advisor.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/jsLibraryMappings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/modules.xml" beforeDir="false" />
+    <list default="true" id="e4a15473-4a9b-4708-9aaa-53cf9fe42787" name="Changes" comment="Frontend updates including UI styling, improved preferences handling, added rotating memes, and updated chart functionality.">
+      <change beforePath="$PROJECT_DIR$/../backend/src/main/java/crypto_advisor_backend/demo/dashboard/CoinGeckoClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend/src/main/java/crypto_advisor_backend/demo/dashboard/CoinGeckoClient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../backend/src/main/java/crypto_advisor_backend/demo/dashboard/DashboardResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend/src/main/java/crypto_advisor_backend/demo/dashboard/DashboardResponse.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../backend/src/main/java/crypto_advisor_backend/demo/dashboard/DashboardService.java" beforeDir="false" afterPath="$PROJECT_DIR$/../backend/src/main/java/crypto_advisor_backend/demo/dashboard/DashboardService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/_metadata.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/api/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/api.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/pages/Dashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/Dashboard.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/Login.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/Login.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/pages/Onboarding.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/Onboarding.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/Signup.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/Signup.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/style.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../package.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -106,8 +99,17 @@
       <workItem from="1777882080514" duration="2409000" />
       <workItem from="1777886552722" duration="545000" />
       <workItem from="1777894082610" duration="4801000" />
-      <workItem from="1777906409640" duration="11167000" />
+      <workItem from="1777906409640" duration="17356000" />
     </task>
+    <task id="LOCAL‎-00001" summary="Frontend updates including UI styling, improved preferences handling, added rotating memes, and updated chart functionality.">
+      <option name="closed" value="true" />
+      <created>1777987431156</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL‎-00001" />
+      <option name="project" value="LOCAL‎" />
+      <updated>1777987431156</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -118,5 +120,9 @@
     <option featureType="dependencySupport" implementationName="executable:docker" />
     <option featureType="dependencySupport" implementationName="javascript:npm:vite" />
     <option featureType="dependencySupport" implementationName="executable:kubectl" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Frontend updates including UI styling, improved preferences handling, added rotating memes, and updated chart functionality." />
+    <option name="LAST_COMMIT_MESSAGE" value="Frontend updates including UI styling, improved preferences handling, added rotating memes, and updated chart functionality." />
   </component>
 </project>

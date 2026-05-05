@@ -123,3 +123,35 @@ export async function sendFeedback(sectionType, vote, itemId, itemLabel) {
 
     return response.json();
 }
+
+export async function updateUserName(name) {
+    const response = await fetch(`${BASE_URL}/api/settings/name`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+
+    return response.json();
+}
+
+export async function updateUserPassword(currentPassword, newPassword) {
+    const response = await fetch(`${BASE_URL}/api/settings/password`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+}
