@@ -1,19 +1,79 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { saveOnboarding } from "../api/api.js";
+import { getOnboardingPreferences, saveOnboarding } from "../api/api.js";
+
+function getPreferencesCacheKey() {
+    const token = localStorage.getItem("token") ?? "guest";
+    return `onboardingPreferences:${token.slice(-16)}`;
+}
+
+function readCachedPreferences() {
+    try {
+        const raw = localStorage.getItem(getPreferencesCacheKey());
+        if (!raw) {
+            return null;
+        }
+        const parsed = JSON.parse(raw);
+        return {
+            assets: Array.isArray(parsed.assets) ? parsed.assets : [],
+            investorType: typeof parsed.investorType === "string" ? parsed.investorType : "",
+            contentTypes: Array.isArray(parsed.contentTypes) ? parsed.contentTypes : [],
+        };
+    } catch {
+        return null;
+    }
+}
+
+function writeCachedPreferences(preferences) {
+    localStorage.setItem(getPreferencesCacheKey(), JSON.stringify(preferences));
+}
 
 function Onboarding() {
     const [assets, setAssets] = useState([]);
     const [investorType, setInvestorType] = useState("");
     const [contentTypes, setContentTypes] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     const navigate = useNavigate();
 
-    const toggleValue = (value, currentValues, setValues) => {
-        if (currentValues.includes(value)) {
-            setValues(currentValues.filter((item) => item !== value));
+    useEffect(() => {
+        const cached = readCachedPreferences();
+        if (cached) {
+            setAssets(cached.assets);
+            setInvestorType(cached.investorType);
+            setContentTypes(cached.contentTypes);
+            setIsLoading(false);
+        }
+
+        async function loadPreferences() {
+            try {
+                const preferences = await getOnboardingPreferences();
+                if (preferences) {
+                    const normalized = {
+                        assets: preferences.assets ?? [],
+                        investorType: preferences.investorType ?? "",
+                        contentTypes: preferences.contentTypes ?? [],
+                    };
+                    setAssets(normalized.assets);
+                    setInvestorType(normalized.investorType);
+                    setContentTypes(normalized.contentTypes);
+                    writeCachedPreferences(normalized);
+                }
+            } catch (error) {
+                // Keep empty defaults if no saved preferences exist yet.
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        loadPreferences();
+    }, []);
+
+    const toggleValue = (value, values, setValues) => {
+        if (values.includes(value)) {
+            setValues(values.filter((item) => item !== value));
         } else {
-            setValues([...currentValues, value]);
+            setValues([...values, value]);
         }
     };
 
@@ -21,26 +81,30 @@ function Onboarding() {
         e.preventDefault();
 
         try {
-            await saveOnboarding({
+            const preferencesToSave = {
                 assets,
                 investorType,
-                contentTypes
-            });
+                contentTypes,
+            };
+            writeCachedPreferences(preferencesToSave);
+            await saveOnboarding(preferencesToSave);
 
-            alert("Preferences saved!");
             navigate("/dashboard");
         } catch (error) {
-            alert("Error: " + error.message);
+            alert("Failed to save preferences");
         }
     };
 
+    if (isLoading) {
+        return <div className="page">Loading preferences...</div>;
+    }
+
     return (
         <div className="page">
-            <h1>Onboarding</h1>
-            <p>Tell us what kind of crypto content you are interested in.</p>
+            <h1>Personalize Your Dashboard</h1>
 
             <form onSubmit={handleSubmit}>
-                <h2>What crypto assets are you interested in?</h2>
+                <h2>Crypto Assets</h2>
 
                 {["BTC", "ETH", "SOL", "DOGE"].map((asset) => (
                     <label key={asset}>
@@ -53,7 +117,7 @@ function Onboarding() {
                     </label>
                 ))}
 
-                <h2>What type of investor are you?</h2>
+                <h2>Investor Type</h2>
 
                 <select
                     value={investorType}
@@ -65,7 +129,7 @@ function Onboarding() {
                     <option value="NFT Collector">NFT Collector</option>
                 </select>
 
-                <h2>What kind of content would you like to see?</h2>
+                <h2>Content Types</h2>
 
                 {["Market News", "Charts", "AI Insight", "Fun"].map((type) => (
                     <label key={type}>
@@ -77,8 +141,6 @@ function Onboarding() {
                         {type}
                     </label>
                 ))}
-
-                <br /><br />
 
                 <button type="submit">Save Preferences</button>
             </form>

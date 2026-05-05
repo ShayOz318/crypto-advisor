@@ -5,8 +5,13 @@ import crypto_advisor_backend.demo.onboarding.UserPreferencesRepository;
 import crypto_advisor_backend.demo.security.JwtService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class DashboardService {
@@ -38,41 +43,230 @@ public class DashboardService {
         String userId = jwtService.extractUserId(token);
 
         UserPreferences preferences = preferencesRepository
-                .findAll()
-                .stream()
-                .filter(p -> p.getUserId().equals(userId))
-                .findFirst()
+                .findByUserId(userId)
                 .orElse(null);
 
         List<String> assets;
         String investorType;
+        List<String> contentTypes;
 
         if (preferences != null) {
-            assets = preferences.getAssets();
+            assets = preferences.getAssets() == null ? List.of() : preferences.getAssets();
             investorType = preferences.getInvestorType();
+            contentTypes = preferences.getContentTypes();
         } else {
             assets = List.of("BTC");
-            investorType = "Long-term";
+            investorType = "HODLer";
+            contentTypes = List.of("Market News", "Charts", "AI Insight", "Fun");
         }
 
-        Map<String, Double> prices = coinGeckoClient.getPrices(assets);
+        String normalizedInvestorType = normalizeInvestorType(investorType);
+        List<String> normalizedAssets = normalizeAssetsByInvestorType(assets, normalizedInvestorType);
 
-        List<String> coinPrices = prices.entrySet()
-                .stream()
-                .map(entry -> entry.getKey() + ": $" + entry.getValue())
-                .toList();
+        Set<String> enabled = new HashSet<>(contentTypes == null ? List.of() : contentTypes);
 
-        List<String> news = newsClient.getNews();
+        List<String> coinPrices = new ArrayList<>();
+        if (enabled.contains("Charts") || enabled.contains("Coin Prices")) {
+            Map<String, Double> prices = coinGeckoClient.getPrices(normalizedAssets);
+            coinPrices = prices.entrySet()
+                    .stream()
+                    .map(entry -> entry.getKey() + ": $" + entry.getValue())
+                    .toList();
+            coinPrices = tailorCoinPricesByInvestorType(coinPrices, normalizedInvestorType);
+        }
 
-        String aiInsight = aiClient.generateInsight(assets, investorType);
+        List<NewsItem> news = List.of();
+        if (enabled.contains("Market News")) {
+            news = newsClient.getNews();
+            news = tailorNewsByInvestorType(news, normalizedInvestorType);
+        }
 
-        String meme = memeClient.getRandomMeme();
+        String aiInsight = null;
+        if (enabled.contains("AI Insight")) {
+            aiInsight = aiClient.generateInsight(normalizedAssets, normalizedInvestorType);
+            aiInsight = tailorInsightByInvestorType(aiInsight, normalizedInvestorType);
+        }
+
+        String meme = null;
+        if (enabled.contains("Fun") || enabled.contains("Fun Crypto Meme")) {
+            meme = memeClient.getRandomMeme();
+        }
+
+        String chartUpdateCadence = "Day Trader".equals(normalizedInvestorType) ? "hourly" : "daily";
 
         return new DashboardResponse(
+                contentTypes,
+                normalizedAssets,
                 coinPrices,
                 news,
                 aiInsight,
-                meme
+                meme,
+                chartUpdateCadence
         );
+    }
+
+    public List<CoinChartPoint> getCoinWeeklyChart(String authHeader, String symbol) {
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtService.extractUserId(token);
+
+        String investorType = preferencesRepository.findByUserId(userId)
+                .map(UserPreferences::getInvestorType)
+                .orElse("HODLer");
+
+        if (normalizeInvestorType(investorType).equals("Day Trader")) {
+            return coinGeckoClient.getHourlyPrices(symbol);
+        }
+        return coinGeckoClient.getWeeklyPrices(symbol);
+    }
+
+    private String normalizeInvestorType(String investorType) {
+        if (investorType == null) {
+            return "HODLer";
+        }
+
+        String normalized = investorType.trim().toLowerCase(Locale.ROOT);
+        if (normalized.contains("day")) {
+            return "Day Trader";
+        }
+        if (normalized.contains("nft")) {
+            return "NFT Collector";
+        }
+        return "HODLer";
+    }
+
+    private List<String> normalizeAssetsByInvestorType(List<String> assets, String investorType) {
+        List<String> normalizedAssets = assets == null ? List.of() : assets;
+        if ("NFT Collector".equals(investorType)) {
+            return normalizedAssets.contains("ETH") ? List.of("ETH") : List.of("ETH");
+        }
+        return normalizedAssets;
+    }
+
+    private List<String> tailorCoinPricesByInvestorType(List<String> coinPrices, String investorType) {
+        if ("HODLer".equals(investorType)) {
+            List<String> longTermView = new ArrayList<>();
+            for (int i = 0; i < Math.min(2, coinPrices.size()); i++) {
+                longTermView.add(coinPrices.get(i));
+            }
+            longTermView.add("HODLer focus: prioritize long-term trend direction over daily swings.");
+            return longTermView;
+        }
+
+        if ("Day Trader".equals(investorType)) {
+            List<String> fastView = new ArrayList<>(coinPrices);
+            fastView.add("Day Trader focus: monitor volatility, momentum shifts, and rapid reversals.");
+            return fastView;
+        }
+
+        List<String> nftView = new ArrayList<>(coinPrices);
+        nftView.add("NFT Collector focus: ETH ecosystem activity is prioritized over broad coin coverage.");
+        return nftView;
+    }
+
+    private List<NewsItem> tailorNewsByInvestorType(List<NewsItem> news, String investorType) {
+        if ("NFT Collector".equals(investorType)) {
+            List<NewsItem> sorted = new ArrayList<>(news);
+            sorted.sort(Comparator.comparing(item -> !isNftRelated(item.getTitle())));
+
+            List<NewsItem> tailored = new ArrayList<>();
+            for (NewsItem item : sorted) {
+                String paragraphOne = addPrefix(
+                        item.getParagraphOne(),
+                        "NFT-focused read:"
+                );
+                String paragraphTwo = addSuffix(
+                        item.getParagraphTwo(),
+                        "Use this update to assess whether demand looks sustainable across marketplaces and whether Ethereum/L2 conditions support continued collector activity."
+                );
+                tailored.add(new NewsItem(
+                        item.getTitle(),
+                        item.getUrl(),
+                        item.getImageUrl(),
+                        paragraphOne,
+                        paragraphTwo
+                ));
+            }
+            return tailored;
+        }
+
+        List<NewsItem> tailored = new ArrayList<>();
+        for (NewsItem item : news) {
+            if ("Day Trader".equals(investorType)) {
+                String paragraphOne = addPrefix(
+                        item.getParagraphOne(),
+                        "Fast market read:"
+                );
+                String paragraphTwo = addSuffix(
+                        item.getParagraphTwo(),
+                        "For day-trading setups, prioritize volatility structure and momentum follow-through."
+                );
+                tailored.add(new NewsItem(
+                        item.getTitle(),
+                        item.getUrl(),
+                        item.getImageUrl(),
+                        paragraphOne,
+                        paragraphTwo
+                ));
+            } else {
+                String paragraphOne = addPrefix(
+                        item.getParagraphOne(),
+                        "Long-term context:"
+                );
+                String paragraphTwo = addSuffix(
+                        item.getParagraphTwo(),
+                        "For HODL strategy, emphasize fundamentals, network growth, and thesis durability over short-term noise."
+                );
+                tailored.add(new NewsItem(
+                        item.getTitle(),
+                        item.getUrl(),
+                        item.getImageUrl(),
+                        paragraphOne,
+                        paragraphTwo
+                ));
+            }
+        }
+        return tailored;
+    }
+
+    private String addPrefix(String original, String prefix) {
+        String base = original == null ? "" : original.trim();
+        if (base.isBlank()) {
+            return prefix;
+        }
+        return prefix + " " + base;
+    }
+
+    private String addSuffix(String original, String suffix) {
+        String base = original == null ? "" : original.trim();
+        if (base.isBlank()) {
+            return suffix;
+        }
+        return base + " " + suffix;
+    }
+
+    private boolean isNftRelated(String title) {
+        if (title == null) {
+            return false;
+        }
+        String normalized = title.toLowerCase(Locale.ROOT);
+        return normalized.contains("nft")
+                || normalized.contains("ethereum")
+                || normalized.contains("eth")
+                || normalized.contains("opensea")
+                || normalized.contains("collection")
+                || normalized.contains("token");
+    }
+
+    private String tailorInsightByInvestorType(String aiInsight, String investorType) {
+        if (aiInsight == null || aiInsight.isBlank()) {
+            return aiInsight;
+        }
+        if ("Day Trader".equals(investorType)) {
+            return aiInsight + " Keep risk tight and react to momentum and volatility changes quickly.";
+        }
+        if ("NFT Collector".equals(investorType)) {
+            return aiInsight + " Add NFT-specific signals like creator traction, collection liquidity, and marketplace demand.";
+        }
+        return aiInsight + " Keep focus on long-term conviction and avoid overreacting to daily noise.";
     }
 }

@@ -3,6 +3,8 @@ package crypto_advisor_backend.demo.onboarding;
 import crypto_advisor_backend.demo.security.JwtService;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class OnboardingService {
 
@@ -21,13 +23,31 @@ public class OnboardingService {
         String token = authHeader.replace("Bearer ", "");
         String userId = jwtService.extractUserId(token);
 
-        UserPreferences preferences = new UserPreferences(
-                userId,
-                request.getAssets(),
-                request.getInvestorType(),
-                request.getContentTypes()
-        );
+        UserPreferences preferences = repository.findByUserId(userId)
+                .orElseGet(() -> new UserPreferences(
+                        userId,
+                        request.getAssets(),
+                        request.getInvestorType(),
+                        request.getContentTypes()
+                ));
+
+        preferences.setAssets(request.getAssets());
+        preferences.setInvestorType(request.getInvestorType());
+        preferences.setContentTypes(request.getContentTypes());
 
         return repository.save(preferences);
+    }
+
+    public UserPreferences getPreferences(String authHeader) {
+        String token = authHeader.replace("Bearer ", "");
+        String userId = jwtService.extractUserId(token);
+
+        return repository.findByUserId(userId)
+                .orElse(new UserPreferences(
+                        userId,
+                        List.of(),
+                        "",
+                        List.of()
+                ));
     }
 }

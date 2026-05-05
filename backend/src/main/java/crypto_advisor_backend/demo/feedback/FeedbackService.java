@@ -26,7 +26,9 @@ public class FeedbackService {
         Feedback feedback = new Feedback(
                 userId,
                 request.getSectionType(),
-                request.getVote()
+                request.getVote(),
+                request.getItemId(),
+                request.getItemLabel()
         );
 
         return feedbackRepository.save(feedback);
@@ -51,6 +53,13 @@ public class FeedbackService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Vote must be LIKE or DISLIKE"
+            );
+        }
+
+        if (request.getItemId() == null || request.getItemId().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Item id is required"
             );
         }
     }

@@ -13,7 +13,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public Object signup(@RequestBody SignupRequest request) {
+    public UserResponse signup(@RequestBody SignupRequest request) {
         return authService.signup(request);
     }
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/api.js";
 
 function Login() {
@@ -14,22 +14,22 @@ function Login() {
         try {
             const data = await login(email, password);
             localStorage.setItem("token", data.token);
-
-            alert("Login successful!");
-            navigate("/onboarding");
+            if (data.user?.name) {
+                localStorage.setItem("userName", data.user.name);
+            }
+            const needsOnboarding = data.needsOnboarding !== false;
+            navigate(needsOnboarding ? "/onboarding" : "/dashboard");
         } catch (error) {
-            alert("Error: " + error.message);
+            alert(error.message || "Login failed");
         }
     };
 
     return (
         <div className="page">
-            <h1>Welcome to Crypto Advisor</h1>
-            <p>Login to view your personalized crypto dashboard.</p>
+            <h1>Login</h1>
+            <p>Don&apos;t have an account? <Link to="/signup">Sign up</Link></p>
 
             <form onSubmit={handleLogin}>
-                <h2>Login</h2>
-
                 <input
                     type="email"
                     placeholder="Email"
@@ -44,19 +44,7 @@ function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                 />
 
-                <button type="button" onClick={() => navigate("/dashboard")}>
-                    Continue without login
-                </button>
-
                 <button type="submit">Login</button>
-
-                <p>
-                    Not registered yet?
-                </p>
-
-                <Link to="/signup">
-                    <button type="button">Sign up</button>
-                </Link>
             </form>
         </div>
     );
