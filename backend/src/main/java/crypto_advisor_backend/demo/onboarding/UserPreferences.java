@@ -16,6 +16,9 @@ public class UserPreferences {
     private String investorType;
     private List<String> contentTypes;
 
+    public UserPreferences() {
+    }
+
     public UserPreferences(String userId,
                            List<String> assets,
                            String investorType,
@@ -44,5 +47,17 @@ public class UserPreferences {
 
     public List<String> getContentTypes() {
         return contentTypes;
+    }
+
+    public void setAssets(List<String> assets) {
+        this.assets = assets;
+    }
+
+    public void setInvestorType(String investorType) {
+        this.investorType = investorType;
+    }
+
+    public void setContentTypes(List<String> contentTypes) {
+        this.contentTypes = contentTypes;
     }
 }

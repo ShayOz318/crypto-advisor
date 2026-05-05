@@ -1,0 +1,24 @@
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Node
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite / build
+frontend/dist/
+
+# Java / Maven
+backend/target/
+**/target/
+
+# Env files
+.env
+.env.*

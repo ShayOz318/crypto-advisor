@@ -19,4 +19,10 @@ public class OnboardingController {
 
         return service.savePreferences(authHeader, request);
     }
+
+    @GetMapping
+    public UserPreferences getPreferences(
+            @RequestHeader("Authorization") String authHeader) {
+        return service.getPreferences(authHeader);
+    }
 }

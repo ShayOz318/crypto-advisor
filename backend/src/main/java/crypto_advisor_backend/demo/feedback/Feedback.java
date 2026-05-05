@@ -14,12 +14,23 @@ public class Feedback {
     private String userId;
     private String sectionType;
     private String vote;
+    private String itemId;
+    private String itemLabel;
     private LocalDateTime createdAt;
 
-    public Feedback(String userId, String sectionType, String vote) {
+    public Feedback() {
+    }
+
+    public Feedback(String userId,
+                    String sectionType,
+                    String vote,
+                    String itemId,
+                    String itemLabel) {
         this.userId = userId;
         this.sectionType = sectionType;
         this.vote = vote;
+        this.itemId = itemId;
+        this.itemLabel = itemLabel;
         this.createdAt = LocalDateTime.now();
     }
 
@@ -37,6 +48,14 @@ public class Feedback {
 
     public String getVote() {
         return vote;
+    }
+
+    public String getItemId() {
+        return itemId;
+    }
+
+    public String getItemLabel() {
+        return itemLabel;
     }
 
     public LocalDateTime getCreatedAt() {
