@@ -48,19 +48,19 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         String configuredOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
-        List<String> allowedOrigins = configuredOrigins == null || configuredOrigins.isBlank()
-                ? List.of("http://localhost:5173", "https://crypto-advisor-k9l5.vercel.app")
+        List<String> allowedOriginPatterns = configuredOrigins == null || configuredOrigins.isBlank()
+                ? List.of("*")
                 : Arrays.stream(configuredOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .collect(Collectors.toList());
 
-        configuration.setAllowedOrigins(allowedOrigins);
-        // Supports Vercel preview deployments without updating backend for every new URL.
-        configuration.setAllowedOriginPatterns(List.of("https://*.vercel.app"));
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
+        // JWT is sent in Authorization header, not cookies.
+        // Keep credentials disabled so wildcard origin patterns are valid.
+        configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
