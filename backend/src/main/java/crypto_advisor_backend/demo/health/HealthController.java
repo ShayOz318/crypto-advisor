@@ -10,4 +10,11 @@ public class HealthController {
     public String health() {
         return "Backend is running";
     }
+
+    @GetMapping("/")
+
+    public String home() {
+        return "Crypto Advisor backend is running";
+
+    }
 }

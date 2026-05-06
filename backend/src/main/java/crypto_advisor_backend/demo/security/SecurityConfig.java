@@ -11,7 +11,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 public class SecurityConfig {
@@ -45,7 +47,17 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        String configuredOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+        List<String> allowedOrigins = configuredOrigins == null || configuredOrigins.isBlank()
+                ? List.of("http://localhost:5173", "https://crypto-advisor-k9l5.vercel.app")
+                : Arrays.stream(configuredOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .collect(Collectors.toList());
+
+        configuration.setAllowedOrigins(allowedOrigins);
+        // Supports Vercel preview deployments without updating backend for every new URL.
+        configuration.setAllowedOriginPatterns(List.of("https://*.vercel.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

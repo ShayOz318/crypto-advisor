@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signup } from "../api/api.js";
 
 function Signup() {
@@ -13,19 +13,19 @@ function Signup() {
         e.preventDefault();
 
         try {
-            await signup(name, email, password);
-
-            alert("Signup successful! Please login.");
-
-            navigate("/login");
+            await signup(name.trim(), email.trim(), password);
+            alert("Signup successful. Please login.");
+            navigate("/");
         } catch (error) {
-            alert("Error: " + error.message);
+            const message = error instanceof Error ? error.message : "Unknown error";
+            alert(`Signup failed: ${message}`);
         }
     };
 
     return (
         <div className="page">
-            <h1>Signup</h1>
+            <h1>Create Account</h1>
+            <p>Already have an account? <Link to="/">Back to login</Link></p>
 
             <form onSubmit={handleSignup}>
                 <input
@@ -35,8 +35,6 @@ function Signup() {
                     onChange={(e) => setName(e.target.value)}
                 />
 
-                <br /><br />
-
                 <input
                     type="email"
                     placeholder="Email"
@@ -44,16 +42,12 @@ function Signup() {
                     onChange={(e) => setEmail(e.target.value)}
                 />
 
-                <br /><br />
-
                 <input
                     type="password"
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                 />
-
-                <br /><br />
 
                 <button type="submit">Sign Up</button>
             </form>
