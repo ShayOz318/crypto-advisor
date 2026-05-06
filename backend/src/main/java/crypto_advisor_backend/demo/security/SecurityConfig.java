@@ -47,7 +47,8 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "https://crypto-advisor-k9l5.vercel.app"
+                "https://crypto-advisor-k9l5.vercel.app",
+                "https://crypto-advisor-k9l5-7y1hah9uj-shayoz318s-projects.vercel.app"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
