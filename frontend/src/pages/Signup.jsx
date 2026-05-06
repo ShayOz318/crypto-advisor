@@ -13,11 +13,12 @@ function Signup() {
         e.preventDefault();
 
         try {
-            await signup(name, email, password);
+            await signup(name.trim(), email.trim(), password);
             alert("Signup successful. Please login.");
             navigate("/");
         } catch (error) {
-            alert("Signup failed");
+            const message = error instanceof Error ? error.message : "Unknown error";
+            alert(`Signup failed: ${message}`);
         }
     };
 
