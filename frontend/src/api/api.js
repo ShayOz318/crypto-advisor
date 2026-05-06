@@ -11,6 +11,17 @@ function buildApiUrl(path) {
     return `${getBaseUrl()}${path}`;
 }
 
+async function throwApiError(response) {
+    const raw = await response.text();
+    let message = raw ? raw.trim() : "";
+
+    if (!message) {
+        message = `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
+    }
+
+    throw new Error(message);
+}
+
 function getToken() {
     return localStorage.getItem("token");
 }
@@ -25,7 +36,7 @@ export async function signup(name, email, password) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -41,7 +52,7 @@ export async function login(email, password) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -58,7 +69,7 @@ export async function saveOnboarding(preferences) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -73,7 +84,7 @@ export async function getOnboardingPreferences() {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     const raw = await response.text();
@@ -97,7 +108,7 @@ export async function getDashboard() {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -112,7 +123,7 @@ export async function getCoinWeeklyChart(symbol) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -129,7 +140,7 @@ export async function sendFeedback(sectionType, vote, itemId, itemLabel) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -146,7 +157,7 @@ export async function updateUserName(name) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 
     return response.json();
@@ -163,6 +174,6 @@ export async function updateUserPassword(currentPassword, newPassword) {
     });
 
     if (!response.ok) {
-        throw new Error(await response.text());
+        await throwApiError(response);
     }
 }
