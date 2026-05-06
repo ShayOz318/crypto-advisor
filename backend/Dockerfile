@@ -1,22 +1,25 @@
-# syntax=docker/dockerfile:1
-
+# Stage 1: Build
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Copy Maven wrapper and pom first for layer caching
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
 
-COPY src ./src
-RUN ./mvnw clean package -DskipTests -B
+# Download dependencies (cached unless pom.xml changes)
+RUN ./mvnw dependency:go-offline -q
 
+# Copy source and build, skipping tests (tests require env vars)
+COPY src src
+RUN ./mvnw package -DskipTests -q
+
+# Stage 2: Run
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
+COPY --from=build /app/target/*.jar app.jar
 
-COPY --from=build /app/target/demo-0.0.1-SNAPSHOT.jar app.jar
-
+# Render injects PORT at runtime; fall back to 8080 locally
 EXPOSE 8080
-ENTRYPOINT ["java", "-Dserver.port=${PORT:-8080}", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java -jar app.jar --server.port=${PORT:-8080}"]
