@@ -1,11 +1,22 @@
 const BASE_URL = import.meta.env.VITE_API_URL;
 
+function getBaseUrl() {
+    if (!BASE_URL || !BASE_URL.trim()) {
+        throw new Error("VITE_API_URL is not configured");
+    }
+    return BASE_URL.replace(/\/+$/, "");
+}
+
+function buildApiUrl(path) {
+    return `${getBaseUrl()}${path}`;
+}
+
 function getToken() {
     return localStorage.getItem("token");
 }
 
 export async function signup(name, email, password) {
-    const response = await fetch(`${BASE_URL}/api/auth/signup`, {
+    const response = await fetch(buildApiUrl("/api/auth/signup"), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -21,7 +32,7 @@ export async function signup(name, email, password) {
 }
 
 export async function login(email, password) {
-    const response = await fetch(`${BASE_URL}/api/auth/login`, {
+    const response = await fetch(buildApiUrl("/api/auth/login"), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -37,7 +48,7 @@ export async function login(email, password) {
 }
 
 export async function saveOnboarding(preferences) {
-    const response = await fetch(`${BASE_URL}/api/onboarding`, {
+    const response = await fetch(buildApiUrl("/api/onboarding"), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -54,7 +65,7 @@ export async function saveOnboarding(preferences) {
 }
 
 export async function getOnboardingPreferences() {
-    const response = await fetch(`${BASE_URL}/api/onboarding`, {
+    const response = await fetch(buildApiUrl("/api/onboarding"), {
         method: "GET",
         headers: {
             Authorization: `Bearer ${getToken()}`,
@@ -78,7 +89,7 @@ export async function getOnboardingPreferences() {
 }
 
 export async function getDashboard() {
-    const response = await fetch(`${BASE_URL}/api/dashboard`, {
+    const response = await fetch(buildApiUrl("/api/dashboard"), {
         method: "GET",
         headers: {
             Authorization: `Bearer ${getToken()}`,
@@ -93,7 +104,7 @@ export async function getDashboard() {
 }
 
 export async function getCoinWeeklyChart(symbol) {
-    const response = await fetch(`${BASE_URL}/api/dashboard/coin-chart?symbol=${encodeURIComponent(symbol)}`, {
+    const response = await fetch(buildApiUrl(`/api/dashboard/coin-chart?symbol=${encodeURIComponent(symbol)}`), {
         method: "GET",
         headers: {
             Authorization: `Bearer ${getToken()}`,
@@ -108,7 +119,7 @@ export async function getCoinWeeklyChart(symbol) {
 }
 
 export async function sendFeedback(sectionType, vote, itemId, itemLabel) {
-    const response = await fetch(`${BASE_URL}/api/feedback`, {
+    const response = await fetch(buildApiUrl("/api/feedback"), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -125,7 +136,7 @@ export async function sendFeedback(sectionType, vote, itemId, itemLabel) {
 }
 
 export async function updateUserName(name) {
-    const response = await fetch(`${BASE_URL}/api/settings/name`, {
+    const response = await fetch(buildApiUrl("/api/settings/name"), {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
@@ -142,7 +153,7 @@ export async function updateUserName(name) {
 }
 
 export async function updateUserPassword(currentPassword, newPassword) {
-    const response = await fetch(`${BASE_URL}/api/settings/password`, {
+    const response = await fetch(buildApiUrl("/api/settings/password"), {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
