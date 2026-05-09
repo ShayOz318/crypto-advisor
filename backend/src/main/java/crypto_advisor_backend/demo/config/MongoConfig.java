@@ -17,7 +17,7 @@ public class MongoConfig {
 
     @Bean
     public MongoClient mongoClient(@Value("${spring.data.mongodb.uri}") String uri) {
-        if (uri == null || uri.isBlank() || uri.equals("MONGODB_URI_NOT_SET")) {
+        if (uri == null || uri.isBlank()) {
             throw new IllegalStateException(
                     "MONGODB_URI is not configured. Set the MONGODB_URI environment variable.");
         }
